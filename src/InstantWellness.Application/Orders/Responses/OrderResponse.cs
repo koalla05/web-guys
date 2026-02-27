@@ -8,4 +8,5 @@ public record OrderResponse(
     DateTime Timestamp,
     decimal CompositeTaxRate,
     decimal TaxAmount,
-    decimal TotalAmount);
+    decimal TotalAmount,
+    string? County = null);

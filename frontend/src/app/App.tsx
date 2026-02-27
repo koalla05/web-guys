@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DashboardSidebar } from './components/dashboard-sidebar';
 import { DashboardHeader } from './components/dashboard-header';
 import { CSVUploadCard } from './components/csv-upload-card';
@@ -11,92 +11,77 @@ import { StatsCards } from './components/stats-cards';
 import { PageHeader } from './components/page-header';
 import { toast } from 'sonner';
 import { Toaster } from './components/ui/sonner';
+import * as api from './lib/api';
 
-// Mock data generator
-const generateMockOrders = (): Order[] => {
-  const counties = ['New York', 'Kings', 'Queens', 'Nassau', 'Suffolk', 'Westchester', 'Erie', 'Monroe'];
-  const orders: Order[] = [];
-
-  for (let i = 1; i <= 42; i++) {
-    const subtotal = parseFloat((Math.random() * 300 + 50).toFixed(2));
-    const compositeTaxRate = parseFloat((Math.random() * 4 + 7).toFixed(2));
-    const taxAmount = parseFloat((subtotal * compositeTaxRate / 100).toFixed(2));
-    const totalAmount = parseFloat((subtotal + taxAmount).toFixed(2));
-
-    orders.push({
-      id: `ORD-${String(i).padStart(5, '0')}`,
-      timestamp: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-      latitude: parseFloat((40.5 + Math.random() * 2).toFixed(4)),
-      longitude: parseFloat((-74.5 + Math.random() * 2).toFixed(4)),
-      subtotal,
-      compositeTaxRate,
-      taxAmount,
-      totalAmount,
-      county: counties[Math.floor(Math.random() * counties.length)],
-    });
-  }
-
-  return orders.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-};
+// Map API order to display order (tax rate as % for display)
+function toDisplayOrder(o: api.Order): Order {
+  return {
+    id: o.id,
+    timestamp: o.timestamp,
+    latitude: o.latitude,
+    longitude: o.longitude,
+    subtotal: o.subtotal,
+    compositeTaxRate: o.composite_tax_rate * 100,
+    taxAmount: o.tax_amount,
+    totalAmount: o.total_amount,
+    county: o.county ?? '—',
+  };
+}
 
 function App() {
-  const [orders, setOrders] = useState<Order[]>(generateMockOrders());
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [orderDetail, setOrderDetail] = useState<api.OrderDetail | null>(null);
   const [filters, setFilters] = useState<OrderFilters>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
 
-  // Filter orders based on active filters
-  const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      // Search by Order ID
-      if (filters.searchQuery && !order.id.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
-        return false;
-      }
+  const fetchOrders = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params: Parameters<typeof api.getOrders>[0] = {
+        page: currentPage,
+        pageSize,
+        orderIdSearch: filters.searchQuery || undefined,
+        fromDate: filters.dateFrom || undefined,
+        toDate: filters.dateTo || undefined,
+        county: filters.county || undefined,
+        minAmount: filters.amountMin ? parseFloat(filters.amountMin) : undefined,
+        maxAmount: filters.amountMax ? parseFloat(filters.amountMax) : undefined,
+        minTaxRate: filters.taxRateMin ? parseFloat(filters.taxRateMin) / 100 : undefined,
+        maxTaxRate: filters.taxRateMax ? parseFloat(filters.taxRateMax) / 100 : undefined,
+      };
+      const result = await api.getOrders(params);
+      setOrders(result.items.map(toDisplayOrder));
+      setTotalCount(result.total_count);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load orders');
+      setOrders([]);
+      setTotalCount(0);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, pageSize, filters]);
 
-      // Date range filter
-      if (filters.dateFrom) {
-        const orderDate = new Date(order.timestamp);
-        const fromDate = new Date(filters.dateFrom);
-        fromDate.setHours(0, 0, 0, 0);
-        if (orderDate < fromDate) return false;
-      }
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
-      if (filters.dateTo) {
-        const orderDate = new Date(order.timestamp);
-        const toDate = new Date(filters.dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        if (orderDate > toDate) return false;
-      }
-
-      // Tax rate range filter
-      if (filters.taxRateMin && order.compositeTaxRate < parseFloat(filters.taxRateMin)) {
-        return false;
-      }
-
-      if (filters.taxRateMax && order.compositeTaxRate > parseFloat(filters.taxRateMax)) {
-        return false;
-      }
-
-      // Amount range filter (total amount)
-      if (filters.amountMin && order.totalAmount < parseFloat(filters.amountMin)) {
-        return false;
-      }
-
-      if (filters.amountMax && order.totalAmount > parseFloat(filters.amountMax)) {
-        return false;
-      }
-
-      // County filter
-      if (filters.county && order.county !== filters.county) {
-        return false;
-      }
-
-      return true;
+  useEffect(() => {
+    if (!selectedOrderId) {
+      setOrderDetail(null);
+      return;
+    }
+    setIsDetailLoading(true);
+    api.getOrderById(selectedOrderId).then((detail) => {
+      setOrderDetail(detail ?? null);
+      setIsDetailLoading(false);
     });
-  }, [orders, filters]);
+  }, [selectedOrderId]);
 
-  // Reset to page 1 whenever filters change
   const handleFilterChange = (newFilters: OrderFilters) => {
     setFilters(newFilters);
     setCurrentPage(1);
@@ -107,105 +92,103 @@ function App() {
     setCurrentPage(1);
   };
 
-  const handleCreateOrder = (orderData: {
+  const handleCreateOrder = async (orderData: {
     latitude: number;
     longitude: number;
     subtotal: number;
     timestamp: string;
   }) => {
-    const subtotal = orderData.subtotal;
-    const compositeTaxRate = parseFloat((Math.random() * 4 + 7).toFixed(2));
-    const taxAmount = parseFloat((subtotal * compositeTaxRate / 100).toFixed(2));
-    const totalAmount = parseFloat((subtotal + taxAmount).toFixed(2));
+    try {
+      await api.createOrder({
+        latitude: orderData.latitude,
+        longitude: orderData.longitude,
+        subtotal: orderData.subtotal,
+        timestamp: orderData.timestamp ? new Date(orderData.timestamp).toISOString() : undefined,
+      });
+      toast.success('Order created successfully!');
+      fetchOrders();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create order');
+    }
+  };
 
-    const newOrder: Order = {
-      id: `ORD-${String(orders.length + 1).padStart(5, '0')}`,
-      timestamp: orderData.timestamp,
-      latitude: orderData.latitude,
-      longitude: orderData.longitude,
-      subtotal,
-      compositeTaxRate,
-      taxAmount,
-      totalAmount,
-      county: 'New York',
-    };
-
-    setOrders([newOrder, ...orders]);
-    toast.success('Order created successfully!');
+  const handleCsvImport = async (file: File) => {
+    try {
+      const result = await api.importOrders(file);
+      if (result.imported_count > 0) {
+        toast.success(`Imported ${result.imported_count} order(s)`);
+        if (result.failed_count > 0) {
+          toast.warning(`${result.failed_count} row(s) failed. Check errors.`);
+        }
+        fetchOrders();
+      } else {
+        toast.error(result.errors?.[0] || 'No orders imported');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to import CSV');
+    }
   };
 
   const handleViewBreakdown = (orderId: string) => {
     setSelectedOrderId(orderId);
   };
 
-  const selectedOrder = orders.find((o) => o.id === selectedOrderId);
-  const breakdown = selectedOrder
+  const breakdown = orderDetail
     ? {
-        orderId: selectedOrder.id,
-        stateRate: 4.0,
-        countyRate: parseFloat((selectedOrder.compositeTaxRate - 5.5).toFixed(2)),
-        cityRate: 1.0,
-        specialRate: 0.5,
-        compositeTaxRate: selectedOrder.compositeTaxRate,
-        taxAmount: selectedOrder.taxAmount,
-        subtotal: selectedOrder.subtotal,
-        totalAmount: selectedOrder.totalAmount,
-        state: 'New York',
-        county: `${selectedOrder.county} County`,
-        city: 'New York City',
-        specialDistrict: 'Metropolitan Transport',
+        orderId: orderDetail.id,
+        stateRate: orderDetail.tax_rate_breakdown.state_rate * 100,
+        countyRate: orderDetail.tax_rate_breakdown.county_rate * 100,
+        cityRate: orderDetail.tax_rate_breakdown.city_rate * 100,
+        specialRate: orderDetail.tax_rate_breakdown.special_rates * 100,
+        compositeTaxRate: orderDetail.tax_rate_breakdown.composite_tax_rate * 100,
+        taxAmount: orderDetail.amount_calculation.tax_amount,
+        subtotal: orderDetail.amount_calculation.subtotal,
+        totalAmount: orderDetail.amount_calculation.total_amount,
+        state: orderDetail.applied_jurisdictions.state ?? '—',
+        county: orderDetail.applied_jurisdictions.county ?? '—',
+        city: orderDetail.applied_jurisdictions.city ?? '—',
+        specialDistrict: orderDetail.applied_jurisdictions.special ?? undefined,
       }
     : null;
 
-  const totalPages = Math.ceil(filteredOrders.length / pageSize);
-  const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  // Calculate stats from filtered orders
-  const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-  const totalTax = filteredOrders.reduce((sum, order) => sum + order.taxAmount, 0);
-  const averageTaxRate = filteredOrders.length > 0 
-    ? filteredOrders.reduce((sum, order) => sum + order.compositeTaxRate, 0) / filteredOrders.length
-    : 0;
+  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const totalTax = orders.reduce((sum, o) => sum + o.taxAmount, 0);
+  const averageTaxRate =
+    orders.length > 0 ? orders.reduce((sum, o) => sum + o.compositeTaxRate, 0) / orders.length : 0;
 
   return (
     <div className="flex min-h-screen bg-background wellness-gradient">
       <DashboardSidebar />
-      
+
       <div className="flex-1 flex flex-col">
         <DashboardHeader />
-        
+
         <main className="flex-1 p-8">
-          {/* Page Header */}
           <PageHeader />
 
-          {/* Stats Cards */}
           <StatsCards
-            totalOrders={orders.length}
+            totalOrders={totalCount}
             totalRevenue={totalRevenue}
             totalTax={totalTax}
             averageTaxRate={averageTaxRate}
           />
 
-          {/* Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <CSVUploadCard />
+            <CSVUploadCard onImport={handleCsvImport} />
             <CreateOrderCard onCreateOrder={handleCreateOrder} />
           </div>
 
-          {/* Filters */}
           <div className="mb-6">
-            <OrdersFilters 
+            <OrdersFilters
               filters={filters}
-              onFilterChange={handleFilterChange} 
+              onFilterChange={handleFilterChange}
               onClearFilters={handleClearFilters}
-              resultsCount={filteredOrders.length}
+              resultsCount={totalCount}
             />
           </div>
 
-          {/* Orders Table Section */}
           <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-foreground mb-1">Recent Orders</h2>
@@ -215,17 +198,17 @@ function App() {
             </div>
 
             <OrdersTable
-              orders={paginatedOrders}
+              orders={orders}
               onViewBreakdown={handleViewBreakdown}
-              isLoading={false}
+              isLoading={isLoading}
             />
 
-            {filteredOrders.length > 0 && (
+            {totalCount > 0 && (
               <OrdersPagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 pageSize={pageSize}
-                totalItems={filteredOrders.length}
+                totalItems={totalCount}
                 onPageChange={setCurrentPage}
                 onPageSizeChange={(size) => {
                   setPageSize(size);
@@ -237,14 +220,13 @@ function App() {
         </main>
       </div>
 
-      {/* Tax Breakdown Modal */}
       <TaxBreakdownModal
         open={!!selectedOrderId}
         onClose={() => setSelectedOrderId(null)}
         breakdown={breakdown}
+        isLoading={isDetailLoading}
       />
 
-      {/* Toaster */}
       <Toaster />
     </div>
   );

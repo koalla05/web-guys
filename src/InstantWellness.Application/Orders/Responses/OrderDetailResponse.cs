@@ -12,7 +12,8 @@ public record OrderDetailResponse(
 
 public record TaxRateBreakdown(
     decimal StateRate,
-    decimal LocalRate,    // county_rate + city_rate
+    decimal CountyRate,
+    decimal CityRate,
     decimal SpecialRates,
     decimal CompositeTaxRate);
 
