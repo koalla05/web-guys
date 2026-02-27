@@ -53,5 +53,6 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, PagedResult<Orde
         order.Timestamp,
         order.CompositeTaxRate,
         order.TaxAmount,
-        order.TotalAmount);
+        order.TotalAmount,
+        order.County);
 }

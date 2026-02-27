@@ -39,5 +39,6 @@ public class CreateOrderHandler : IRequestHandler<Commands.CreateOrderCommand, O
         order.Timestamp,
         order.CompositeTaxRate,
         order.TaxAmount,
-        order.TotalAmount);
+        order.TotalAmount,
+        order.County);
 }

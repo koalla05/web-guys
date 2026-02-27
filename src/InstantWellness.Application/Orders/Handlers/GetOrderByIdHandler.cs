@@ -32,7 +32,8 @@ public class GetOrderByIdHandler : IRequestHandler<GetOrderByIdQuery, OrderDetai
         order.Timestamp,
         new TaxRateBreakdown(
             order.StateRate,
-            order.LocalRate,
+            order.CountyRate,
+            order.CityRate,
             order.SpecialRates,
             order.CompositeTaxRate),
         new AmountCalculation(
