@@ -42,12 +42,18 @@ public class OrderRepositoryInMemory : IOrderRepository
     public Task<(IEnumerable<Order> Items, int TotalCount)> GetPagedAsync(
         int page,
         int pageSize,
+        string? orderIdSearch = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        string? county = null,
+        decimal? minAmount = null,
+        decimal? maxAmount = null,
+        decimal? minTaxRate = null,
+        decimal? maxTaxRate = null,
         double? minLat = null,
         double? maxLat = null,
         double? minLon = null,
         double? maxLon = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -56,6 +62,22 @@ public class OrderRepositoryInMemory : IOrderRepository
         {
             var query = _orders.AsEnumerable();
 
+            if (!string.IsNullOrWhiteSpace(orderIdSearch))
+                query = query.Where(o => o.Id.ToString().Contains(orderIdSearch, StringComparison.OrdinalIgnoreCase));
+            if (fromDate.HasValue)
+                query = query.Where(o => o.Timestamp >= fromDate.Value);
+            if (toDate.HasValue)
+                query = query.Where(o => o.Timestamp <= toDate.Value);
+            if (!string.IsNullOrWhiteSpace(county))
+                query = query.Where(o => o.County != null && o.County.Contains(county, StringComparison.OrdinalIgnoreCase));
+            if (minAmount.HasValue)
+                query = query.Where(o => o.TotalAmount >= minAmount.Value);
+            if (maxAmount.HasValue)
+                query = query.Where(o => o.TotalAmount <= maxAmount.Value);
+            if (minTaxRate.HasValue)
+                query = query.Where(o => o.CompositeTaxRate >= minTaxRate.Value);
+            if (maxTaxRate.HasValue)
+                query = query.Where(o => o.CompositeTaxRate <= maxTaxRate.Value);
             if (minLat.HasValue)
                 query = query.Where(o => o.Latitude >= minLat.Value);
             if (maxLat.HasValue)
@@ -64,10 +86,6 @@ public class OrderRepositoryInMemory : IOrderRepository
                 query = query.Where(o => o.Longitude >= minLon.Value);
             if (maxLon.HasValue)
                 query = query.Where(o => o.Longitude <= maxLon.Value);
-            if (fromDate.HasValue)
-                query = query.Where(o => o.Timestamp >= fromDate.Value);
-            if (toDate.HasValue)
-                query = query.Where(o => o.Timestamp <= toDate.Value);
 
             var totalCount = query.Count();
             var items = query

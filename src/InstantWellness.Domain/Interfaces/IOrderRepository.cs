@@ -10,11 +10,17 @@ public interface IOrderRepository
     Task<(IEnumerable<Order> Items, int TotalCount)> GetPagedAsync(
         int page,
         int pageSize,
+        string? orderIdSearch = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        string? county = null,
+        decimal? minAmount = null,
+        decimal? maxAmount = null,
+        decimal? minTaxRate = null,
+        decimal? maxTaxRate = null,
         double? minLat = null,
         double? maxLat = null,
         double? minLon = null,
         double? maxLon = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
         CancellationToken cancellationToken = default);
 }

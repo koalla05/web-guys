@@ -20,12 +20,18 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, PagedResult<Orde
         var (items, totalCount) = await _orderRepository.GetPagedAsync(
             request.Page,
             request.PageSize,
+            request.OrderIdSearch,
+            request.FromDate,
+            request.ToDate,
+            request.County,
+            request.MinAmount,
+            request.MaxAmount,
+            request.MinTaxRate,
+            request.MaxTaxRate,
             request.MinLat,
             request.MaxLat,
             request.MinLon,
             request.MaxLon,
-            request.FromDate,
-            request.ToDate,
             cancellationToken);
 
         var responses = items.Select(MapToResponse).ToList();
