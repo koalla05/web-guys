@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/InstantWellness.Api/InstantWellness.Api.csproj" />
+    <Project Path="src/InstantWellness.Application/InstantWellness.Application.csproj" />
+    <Project Path="src/InstantWellness.Domain/InstantWellness.Domain.csproj" />
+    <Project Path="src/InstantWellness.Infrastructure/InstantWellness.Infrastructure.csproj" />
+  </Folder>
+</Solution>
