@@ -1,4 +1,5 @@
 using InstantWellness.Application.Orders.Responses;
+using InstantWellness.Application.Tax;
 using InstantWellness.Domain;
 using InstantWellness.Domain.Interfaces;
 using MediatR;
@@ -8,14 +9,23 @@ namespace InstantWellness.Application.Orders.Handlers;
 public class CreateOrderHandler : IRequestHandler<Commands.CreateOrderCommand, OrderResponse>
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly ITaxService _taxService;
 
-    public CreateOrderHandler(IOrderRepository orderRepository)
+    public CreateOrderHandler(IOrderRepository orderRepository, ITaxService taxService)
     {
         _orderRepository = orderRepository;
+        _taxService = taxService;
     }
 
     public async Task<OrderResponse> Handle(Commands.CreateOrderCommand request, CancellationToken cancellationToken)
     {
+        // Calculate tax based on location
+        var taxCalculation = await _taxService.CalculateTaxAsync(
+            request.Latitude, 
+            request.Longitude, 
+            request.Subtotal, 
+            cancellationToken);
+
         var order = new Order
         {
             Id = Guid.NewGuid(),
@@ -23,8 +33,16 @@ public class CreateOrderHandler : IRequestHandler<Commands.CreateOrderCommand, O
             Longitude = request.Longitude,
             Subtotal = request.Subtotal,
             Timestamp = request.Timestamp ?? DateTime.UtcNow,
-            CompositeTaxRate = 0, // Tax calculation skipped for now
-            TaxAmount = 0
+            CompositeTaxRate = taxCalculation.CompositeTaxRate,
+            TaxAmount = taxCalculation.TaxAmount,
+            StateRate = taxCalculation.StateRate,
+            CountyRate = taxCalculation.CountyRate,
+            CityRate = taxCalculation.CityRate,
+            SpecialRates = taxCalculation.SpecialRates,
+            State = taxCalculation.State,
+            County = taxCalculation.County,
+            City = taxCalculation.City,
+            SpecialJurisdiction = string.Join(", ", taxCalculation.Jurisdictions)
         };
 
         var savedOrder = await _orderRepository.AddAsync(order, cancellationToken);
@@ -37,8 +55,15 @@ public class CreateOrderHandler : IRequestHandler<Commands.CreateOrderCommand, O
         order.Longitude,
         order.Subtotal,
         order.Timestamp,
-        order.CompositeTaxRate,
-        order.TaxAmount,
+        order.CompositeTaxRate ?? 0,
+        order.TaxAmount ?? 0,
         order.TotalAmount,
-        order.County);
+        order.County,
+        order.StateRate ?? 0,
+        order.CountyRate ?? 0,
+        order.CityRate ?? 0,
+        order.SpecialRates ?? 0,
+        order.State,
+        order.City,
+        order.SpecialJurisdiction);
 }

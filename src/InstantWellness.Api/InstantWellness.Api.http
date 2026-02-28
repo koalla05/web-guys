@@ -1,6 +1,41 @@
 @InstantWellness.Api_HostAddress = http://localhost:5046
 
-GET {{InstantWellness.Api_HostAddress}}/weatherforecast/
+### Create Order - Cattaraugus County, NY
+POST {{InstantWellness.Api_HostAddress}}/orders
+Content-Type: application/json
+
+{
+  "latitude": 42.01246326237433,
+  "longitude": -78.8671866447861,
+  "subtotal": 100.00
+}
+
+### Create Order - New York City (Manhattan)
+POST {{InstantWellness.Api_HostAddress}}/orders
+Content-Type: application/json
+
+{
+  "latitude": 40.7580,
+  "longitude": -73.9855,
+  "subtotal": 100.00
+}
+
+### Create Order - Yonkers, Westchester County
+POST {{InstantWellness.Api_HostAddress}}/orders
+Content-Type: application/json
+
+{
+  "latitude": 40.9312,
+  "longitude": -73.8987,
+  "subtotal": 100.00
+}
+
+### Get All Orders
+GET {{InstantWellness.Api_HostAddress}}/orders
+Accept: application/json
+
+### Get Order by ID (replace with actual ID)
+GET {{InstantWellness.Api_HostAddress}}/orders/{order-id}
 Accept: application/json
 
 ###

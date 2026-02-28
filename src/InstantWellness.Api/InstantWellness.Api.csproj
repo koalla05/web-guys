@@ -17,4 +17,10 @@
     <ProjectReference Include="..\InstantWellness.Infrastructure\InstantWellness.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="tax_rates.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

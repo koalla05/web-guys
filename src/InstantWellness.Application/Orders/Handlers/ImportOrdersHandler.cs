@@ -73,6 +73,8 @@ public class ImportOrdersHandler : IRequestHandler<ImportOrdersCommand, ImportOr
                     var subtotal = decimal.Parse(subtotalStr.Trim(), CultureInfo.InvariantCulture);
                     var timestamp = ParseTimestamp(timestampStr);
 
+                    // Save order WITHOUT tax calculation (lazy evaluation)
+                    // Tax will be calculated on-demand when order is retrieved
                     var order = new Order
                     {
                         Id = Guid.NewGuid(),
@@ -80,8 +82,7 @@ public class ImportOrdersHandler : IRequestHandler<ImportOrdersCommand, ImportOr
                         Longitude = longitude,
                         Subtotal = subtotal,
                         Timestamp = timestamp,
-                        CompositeTaxRate = 0,
-                        TaxAmount = 0
+                        // Tax fields remain null - will be calculated lazily
                     };
 
                     ordersToImport.Add(order);
