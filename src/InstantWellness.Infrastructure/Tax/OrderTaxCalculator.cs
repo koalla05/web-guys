@@ -40,7 +40,7 @@ public class OrderTaxCalculator : IOrderTaxCalculator
         order.State = taxCalculation.State;
         order.County = taxCalculation.County;
         order.City = taxCalculation.City;
-        order.SpecialJurisdiction = string.Join(", ", taxCalculation.Jurisdictions);
+        order.SpecialJurisdiction = string.Join(", ", taxCalculation.SpecialJurisdictions);
 
         // Persist the calculated tax
         await _orderRepository.UpdateAsync(order, cancellationToken);

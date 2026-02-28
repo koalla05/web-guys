@@ -69,6 +69,7 @@ public class TaxService : ITaxService
             CityRate = taxRate.CityRate,
             SpecialRates = specialRatesSum,
             Jurisdictions = jurisdictions,
+            SpecialJurisdictions = taxRate.SpecialRates.Select(sr => $"{sr.Name} ({sr.Rate:P2})").ToList(),
             State = taxRate.State,
             County = taxRate.County,
             City = !string.IsNullOrEmpty(taxRate.City) && taxRate.City != "0" ? taxRate.City : null
@@ -160,6 +161,7 @@ public class TaxService : ITaxService
             CityRate = 0,
             SpecialRates = 0,
             Jurisdictions = new List<string> { "New York State (4.00%)" },
+            SpecialJurisdictions = new List<string>(),
             State = "NY",
             County = null,
             City = null

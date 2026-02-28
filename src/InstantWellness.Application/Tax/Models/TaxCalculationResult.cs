@@ -10,6 +10,7 @@ public class TaxCalculationResult
     public decimal CityRate { get; set; }
     public decimal SpecialRates { get; set; }
     public List<string> Jurisdictions { get; set; } = new();
+    public List<string> SpecialJurisdictions { get; set; } = new();
     public string? State { get; set; }
     public string? County { get; set; }
     public string? City { get; set; }

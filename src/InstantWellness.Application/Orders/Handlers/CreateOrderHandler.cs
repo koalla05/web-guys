@@ -42,7 +42,7 @@ public class CreateOrderHandler : IRequestHandler<Commands.CreateOrderCommand, O
             State = taxCalculation.State,
             County = taxCalculation.County,
             City = taxCalculation.City,
-            SpecialJurisdiction = string.Join(", ", taxCalculation.Jurisdictions)
+            SpecialJurisdiction = string.Join(", ", taxCalculation.SpecialJurisdictions)
         };
 
         var savedOrder = await _orderRepository.AddAsync(order, cancellationToken);
