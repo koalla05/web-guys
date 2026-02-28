@@ -12,10 +12,12 @@ namespace InstantWellness.Application.Orders.Handlers;
 public class ImportOrdersHandler : IRequestHandler<ImportOrdersCommand, ImportOrdersResult>
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly InstantWellness.Domain.Interfaces.ITaxCalculationService _taxService;
 
-    public ImportOrdersHandler(IOrderRepository orderRepository)
+    public ImportOrdersHandler(IOrderRepository orderRepository, InstantWellness.Domain.Interfaces.ITaxCalculationService taxService)
     {
         _orderRepository = orderRepository;
+        _taxService = taxService;
     }
 
     public async Task<ImportOrdersResult> Handle(ImportOrdersCommand request, CancellationToken cancellationToken)
@@ -73,6 +75,10 @@ public class ImportOrdersHandler : IRequestHandler<ImportOrdersCommand, ImportOr
                     var subtotal = decimal.Parse(subtotalStr.Trim(), CultureInfo.InvariantCulture);
                     var timestamp = ParseTimestamp(timestampStr);
 
+                    var taxResult = await _taxService.GetTaxForCoordinatesAsync(latitude, longitude, cancellationToken);
+                    var compositeRate = taxResult?.CompositeTaxRate ?? 0m;
+                    var taxAmount = subtotal * compositeRate;
+
                     var order = new Order
                     {
                         Id = Guid.NewGuid(),
@@ -80,8 +86,16 @@ public class ImportOrdersHandler : IRequestHandler<ImportOrdersCommand, ImportOr
                         Longitude = longitude,
                         Subtotal = subtotal,
                         Timestamp = timestamp,
-                        CompositeTaxRate = 0,
-                        TaxAmount = 0
+                        CompositeTaxRate = compositeRate,
+                        TaxAmount = taxAmount,
+                        StateRate = taxResult?.StateRate ?? 0m,
+                        CountyRate = taxResult?.CountyRate ?? 0m,
+                        CityRate = taxResult?.CityRate ?? 0m,
+                        SpecialRates = taxResult?.SpecialRates ?? 0m,
+                        State = taxResult?.State,
+                        County = taxResult?.County,
+                        City = taxResult?.City,
+                        SpecialJurisdiction = taxResult?.SpecialJurisdiction
                     };
 
                     ordersToImport.Add(order);

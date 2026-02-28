@@ -22,6 +22,20 @@ if [ ! -d "frontend/node_modules" ]; then
   echo ""
 fi
 
+# Setup data-pipeline (tax rates + Python deps) if Python is available
+if command -v python3 &>/dev/null; then
+  if [ -f "$ROOT/data-pipeline/requirements.txt" ]; then
+    echo "Installing data-pipeline Python dependencies..."
+    (cd "$ROOT/data-pipeline" && pip install -q -r requirements.txt 2>/dev/null || python3 -m pip install -q -r requirements.txt 2>/dev/null) || true
+    echo ""
+  fi
+  if [ -f "$ROOT/data-pipeline/tax_rates_retrive.py" ] && [ -f "$ROOT/data-pipeline/pub718.pdf" ]; then
+    echo "Regenerating tax_rates.csv from PDF..."
+    (cd "$ROOT/data-pipeline" && python3 tax_rates_retrive.py) 2>/dev/null || true
+    echo ""
+  fi
+fi
+
 # Start backend
 echo "Starting backend (http://localhost:5046)..."
 cd "$ROOT/src/InstantWellness.Api"
