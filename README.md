@@ -4,6 +4,8 @@
 
 **Stack:** .NET 8 · ASP.NET Web API · React 18 · Vite · Tailwind CSS · Clean Architecture · Docker · Render.com
 
+**Live backend URL:** https://web-guys.onrender.com
+
 ---
 
 ## Architecture
@@ -111,7 +113,7 @@ The backend is containerized with Docker and deployed as a Web Service on Render
 
 > ⚠️ The Root Directory must be **empty** and Build Context must be `.` (repo root). If set to `src/InstantWellness.Api/`, Docker won't be able to access other project layers and the build will fail.
 
-**Live backend URL:** https://web-guys-back.onrender.com
+**Live backend URL:** https://web-guys.onrender.com
 
 **Dockerfile summary** (multi-stage build):
 
