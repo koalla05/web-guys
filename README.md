@@ -161,3 +161,62 @@ In dev, Vite proxies `/api` to the backend. In production, `VITE_API_URL` is rea
 | `VITE_API_URL` | Frontend | `https://web-guys-back.onrender.com` |
 
 ---
+
+# Data Preparation and Handling
+
+The tax data for New York State was obtained from the [official website of the New York State Department of Taxation and Finance](https://www.tax.ny.gov/pdf/publications/sales/pub718.pdf).
+
+There is a pdf file with a table containing tax rates for each county or locality. 
+
+## PDF Parsing
+
+The table was parsed using [python script](data-pipeline/tax_rates_retrive.py) and saved in [tax_rates.csv file](data-pipeline/tax_rates.csv). 
+
+To run the script you should run following commands:
+```bash
+# create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# install dependencies
+pip install -r requirements.txt
+
+# run the script
+python3 tax_rates_retrive.py
+```
+
+## Reverse Geocoding
+
+To identify the location from coordinates (latitude and longitude) for further mapping to the locations in tax_rates.csv [the Nominatim API (OpenStreetMap)](https://nominatim.openstreetmap.org/ui/search.html) was used.
+
+Reverce mapping endpoint:
+
+```
+https://nominatim.openstreetmap.org/reverse?lat=<your_lat>&lon=<your_lon>&format=json
+```
+
+Here is an example of usage:
+```
+# request
+https://nominatim.openstreetmap.org/reverse?lat=42.01246326237433&lon=-78.8671866447861&format=json
+
+# response
+{"place_id":322463192,"licence":"Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright","osm_type":"way","osm_id":666459766,"lat":"42.0095635","lon":"-78.8640909","class":"highway","type":"footway","place_rank":27,"importance":0.040040368505378794,"addresstype":"road","name":"Finger Lakes / North Country Trail","display_name":"Finger Lakes / North Country Trail, Town of Coldspring, Corydon Township, Cattaraugus County, New York, United States","address":{"road":"Finger Lakes / North Country Trail","hamlet":"Town of Coldspring","city":"Corydon Township","county":"Cattaraugus County","state":"New York","ISO3166-2-lvl4":"US-NY","country":"United States","country_code":"us"},"boundingbox":["41.9977901","42.0177203","-78.8982344","-78.8560915"]}
+```
+
+There are city and county fields that were used for retrieving the location. They were also parsed to map the naming from tax_rates.csv.
+
+## Tax Calculation Strategy
+Tax calculation is implemented using lazy evaluation.
+ - POST /orders/import saves imported orders without calculating taxes.
+ - Taxes are calculated dynamically during GET requests.
+
+## Advantages of This Approach
+ - Improved user experience (no waiting during import)
+ - Reduced load on the Nominatim API
+ - Lower backend resource consumption
+ - No unnecessary recalculations
+
+## Future improvements
+
+Integration with official real-time tax data portals could improve accuracy. However, such services are typically paid. Since tax rates do not change frequently, the current solution provides a reasonable balance between performance, cost efficiency and accuracy.
