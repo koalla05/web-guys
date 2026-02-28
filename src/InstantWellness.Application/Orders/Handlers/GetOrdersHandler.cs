@@ -1,5 +1,6 @@
 using InstantWellness.Application.Orders.Queries;
 using InstantWellness.Application.Orders.Responses;
+using InstantWellness.Application.Tax;
 using InstantWellness.Domain;
 using InstantWellness.Domain.Interfaces;
 using MediatR;
@@ -9,10 +10,12 @@ namespace InstantWellness.Application.Orders.Handlers;
 public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, PagedResult<OrderResponse>>
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IOrderTaxCalculator _taxCalculator;
 
-    public GetOrdersHandler(IOrderRepository orderRepository)
+    public GetOrdersHandler(IOrderRepository orderRepository, IOrderTaxCalculator taxCalculator)
     {
         _orderRepository = orderRepository;
+        _taxCalculator = taxCalculator;
     }
 
     public async Task<PagedResult<OrderResponse>> Handle(GetOrdersQuery request, CancellationToken cancellationToken)
@@ -34,7 +37,11 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, PagedResult<Orde
             request.MaxLon,
             cancellationToken);
 
-        var responses = items.Select(MapToResponse).ToList();
+        // Lazy evaluation: ensure all orders have tax calculated
+        var ordersList = items.ToList();
+        await _taxCalculator.EnsureTaxCalculatedAsync(ordersList, cancellationToken);
+
+        var responses = ordersList.Select(MapToResponse).ToList();
         var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
 
         return new PagedResult<OrderResponse>(
@@ -51,8 +58,15 @@ public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, PagedResult<Orde
         order.Longitude,
         order.Subtotal,
         order.Timestamp,
-        order.CompositeTaxRate,
-        order.TaxAmount,
+        order.CompositeTaxRate ?? 0,
+        order.TaxAmount ?? 0,
         order.TotalAmount,
-        order.County);
+        order.County,
+        order.StateRate ?? 0,
+        order.CountyRate ?? 0,
+        order.CityRate ?? 0,
+        order.SpecialRates ?? 0,
+        order.State,
+        order.City,
+        order.SpecialJurisdiction);
 }

@@ -1,5 +1,6 @@
 using InstantWellness.Application.Orders.Queries;
 using InstantWellness.Application.Orders.Responses;
+using InstantWellness.Application.Tax;
 using InstantWellness.Domain;
 using InstantWellness.Domain.Interfaces;
 using MediatR;
@@ -9,10 +10,12 @@ namespace InstantWellness.Application.Orders.Handlers;
 public class GetOrderByIdHandler : IRequestHandler<GetOrderByIdQuery, OrderDetailResponse?>
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IOrderTaxCalculator _taxCalculator;
 
-    public GetOrderByIdHandler(IOrderRepository orderRepository)
+    public GetOrderByIdHandler(IOrderRepository orderRepository, IOrderTaxCalculator taxCalculator)
     {
         _orderRepository = orderRepository;
+        _taxCalculator = taxCalculator;
     }
 
     public async Task<OrderDetailResponse?> Handle(GetOrderByIdQuery request, CancellationToken cancellationToken)
@@ -20,6 +23,9 @@ public class GetOrderByIdHandler : IRequestHandler<GetOrderByIdQuery, OrderDetai
         var order = await _orderRepository.GetByIdAsync(request.Id, cancellationToken);
         if (order == null)
             return null;
+
+        // Lazy evaluation: ensure tax is calculated before returning
+        order = await _taxCalculator.EnsureTaxCalculatedAsync(order, cancellationToken);
 
         return MapToDetailResponse(order);
     }
@@ -31,14 +37,14 @@ public class GetOrderByIdHandler : IRequestHandler<GetOrderByIdQuery, OrderDetai
         order.Subtotal,
         order.Timestamp,
         new TaxRateBreakdown(
-            order.StateRate,
-            order.CountyRate,
-            order.CityRate,
-            order.SpecialRates,
-            order.CompositeTaxRate),
+            order.StateRate ?? 0,
+            order.CountyRate ?? 0,
+            order.CityRate ?? 0,
+            order.SpecialRates ?? 0,
+            order.CompositeTaxRate ?? 0),
         new AmountCalculation(
             order.Subtotal,
-            order.TaxAmount,
+            order.TaxAmount ?? 0,
             order.TotalAmount),
         new AppliedJurisdictions(
             order.State,

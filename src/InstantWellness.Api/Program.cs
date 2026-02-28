@@ -12,7 +12,10 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure();
+
+// Get the path to tax_rates.csv
+var taxRatesCsvPath = Path.Combine(AppContext.BaseDirectory, "tax_rates.csv");
+builder.Services.AddInfrastructure(taxRatesCsvPath);
 
 builder.Services.AddCors(options =>
 {

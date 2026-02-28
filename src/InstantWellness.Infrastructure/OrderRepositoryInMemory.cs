@@ -39,6 +39,21 @@ public class OrderRepositoryInMemory : IOrderRepository
         }
     }
 
+    public Task<Order> UpdateAsync(Order order, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_lock)
+        {
+            var existingOrder = _orders.FirstOrDefault(o => o.Id == order.Id);
+            if (existingOrder != null)
+            {
+                var index = _orders.IndexOf(existingOrder);
+                _orders[index] = order;
+            }
+            return Task.FromResult(order);
+        }
+    }
+
     public Task<(IEnumerable<Order> Items, int TotalCount)> GetPagedAsync(
         int page,
         int pageSize,
@@ -75,9 +90,9 @@ public class OrderRepositoryInMemory : IOrderRepository
             if (maxAmount.HasValue)
                 query = query.Where(o => o.TotalAmount <= maxAmount.Value);
             if (minTaxRate.HasValue)
-                query = query.Where(o => o.CompositeTaxRate >= minTaxRate.Value);
+                query = query.Where(o => o.CompositeTaxRate.HasValue && o.CompositeTaxRate >= minTaxRate.Value);
             if (maxTaxRate.HasValue)
-                query = query.Where(o => o.CompositeTaxRate <= maxTaxRate.Value);
+                query = query.Where(o => o.CompositeTaxRate.HasValue && o.CompositeTaxRate <= maxTaxRate.Value);
             if (minLat.HasValue)
                 query = query.Where(o => o.Latitude >= minLat.Value);
             if (maxLat.HasValue)
