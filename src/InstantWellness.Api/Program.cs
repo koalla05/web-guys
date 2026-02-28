@@ -15,7 +15,8 @@ builder.Services.AddApplication();
 
 // Get the path to tax_rates.csv
 var taxRatesCsvPath = Path.Combine(AppContext.BaseDirectory, "tax_rates.csv");
-builder.Services.AddInfrastructure(taxRatesCsvPath);
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddInfrastructure(taxRatesCsvPath, connectionString);
 
 builder.Services.AddCors(options =>
 {

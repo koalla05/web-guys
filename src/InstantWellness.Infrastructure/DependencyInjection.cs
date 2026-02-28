@@ -1,17 +1,31 @@
 using InstantWellness.Application.Geocoding;
 using InstantWellness.Application.Tax;
 using InstantWellness.Domain.Interfaces;
+using InstantWellness.Infrastructure.Data;
 using InstantWellness.Infrastructure.Geocoding;
 using InstantWellness.Infrastructure.Tax;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace InstantWellness.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string taxRatesCsvPath)
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        string taxRatesCsvPath,
+        string? connectionString = null)
     {
-        services.AddSingleton<IOrderRepository, OrderRepositoryInMemory>();
+        if (!string.IsNullOrWhiteSpace(connectionString))
+        {
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseNpgsql(connectionString));
+            services.AddScoped<IOrderRepository, OrderRepositoryEf>();
+        }
+        else
+        {
+            services.AddSingleton<IOrderRepository, OrderRepositoryInMemory>();
+        }
         
         // Register HttpClient for Geocoding service
         services.AddHttpClient<IGeocodingService, NominatimGeocodingService>();
