@@ -13,7 +13,8 @@ public class Order
     public decimal TotalAmount => Subtotal + TaxAmount;
 
     public decimal StateRate { get; set; }
-    public decimal LocalRate { get; set; }      // county_rate + city_rate
+    public decimal CountyRate { get; set; }
+    public decimal CityRate { get; set; }
     public decimal SpecialRates { get; set; }
     public string? State { get; set; }
     public string? County { get; set; }
